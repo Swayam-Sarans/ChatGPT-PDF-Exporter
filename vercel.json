@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/fetch-chat",
+      "destination": "/api/fetch-chat.js"
+    }
+  ]
+}

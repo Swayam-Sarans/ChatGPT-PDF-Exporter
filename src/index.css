@@ -1,0 +1,187 @@
+/* =========================================================
+   THEME VARIABLES & GLOBAL STYLES (MATCHING BOOKMARKLET V10)
+   ========================================================= */
+:root {
+  --pdf-bg: #0d1117;
+  --pdf-surface: #161b22;
+  --pdf-user: #21262d;
+  --pdf-border: #30363d;
+  --pdf-text: #e6edf3;
+  --pdf-muted: #8b949e;
+  --pdf-blue: #58a6ff;
+  --pdf-purple: #bc8cff;
+}
+
+html,
+body {
+  background: var(--pdf-bg) !important;
+  color: var(--pdf-text) !important;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif !important;
+  line-height: 1.6 !important;
+  margin: 0;
+  padding: 0;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+* {
+  box-sizing: border-box !important;
+}
+
+/* =========================================================
+   EXPORT HEADER STYLING
+   ========================================================= */
+#chatgpt-pdf-export-header {
+  max-width: 900px !important;
+  margin: 40px auto 30px auto !important;
+  padding: 32px 38px !important;
+  background: var(--pdf-surface) !important;
+  border: 1px solid var(--pdf-border) !important;
+  border-left: 4px solid var(--pdf-purple) !important;
+  border-radius: 10px !important;
+}
+
+#chatgpt-pdf-export-header h1 {
+  margin: 0 0 12px 0 !important;
+  color: var(--pdf-text) !important;
+  font-size: 30px !important;
+  font-weight: 700 !important;
+  line-height: 1.25 !important;
+}
+
+#chatgpt-pdf-export-header .export-subtitle {
+  margin: 0 !important;
+  color: var(--pdf-muted) !important;
+  font-size: 14px !important;
+}
+
+#chatgpt-pdf-export-header .export-badge {
+  display: inline-block !important;
+  margin-bottom: 18px !important;
+  padding: 5px 10px !important;
+  background: rgba(88, 166, 255, 0.1) !important;
+  border: 1px solid rgba(88, 166, 255, 0.4) !important;
+  border-radius: 20px !important;
+  color: var(--pdf-blue) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+
+/* =========================================================
+   MESSAGES & CARDS
+   ========================================================= */
+.pdf-article {
+  width: calc(100% - 40px) !important;
+  max-width: 900px !important;
+  margin: 0 auto 28px auto !important;
+  padding: 0 !important;
+}
+
+[data-message-author-role="user"],
+[data-message-author-role="assistant"] {
+  position: relative !important;
+  width: 100% !important;
+  padding: 26px 30px !important;
+  border-radius: 10px !important;
+  color: var(--pdf-text) !important;
+}
+
+[data-message-author-role="user"] {
+  background: var(--pdf-user) !important;
+  border: 1px solid var(--pdf-border) !important;
+  border-left: 4px solid var(--pdf-blue) !important;
+}
+
+[data-message-author-role="assistant"] {
+  background: var(--pdf-surface) !important;
+  border: 1px solid var(--pdf-border) !important;
+  border-left: 4px solid var(--pdf-purple) !important;
+}
+
+.pdf-role-label {
+  display: block !important;
+  margin: 0 0 18px 0 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 1.5px !important;
+  text-transform: uppercase !important;
+}
+
+[data-message-author-role="user"] > .pdf-role-label {
+  color: var(--pdf-blue) !important;
+}
+
+[data-message-author-role="assistant"] > .pdf-role-label {
+  color: var(--pdf-purple) !important;
+}
+
+/* Typography & Headings */
+h1,
+h2,
+h3,
+h4 {
+  color: var(--pdf-text) !important;
+  font-weight: 700 !important;
+}
+h2 {
+  margin-top: 30px !important;
+  margin-bottom: 16px !important;
+  padding-bottom: 8px !important;
+  color: var(--pdf-blue) !important;
+  font-size: 22px !important;
+  border-bottom: 1px solid var(--pdf-border) !important;
+}
+h3 {
+  margin-top: 24px !important;
+  margin-bottom: 12px !important;
+  color: var(--pdf-blue) !important;
+  font-size: 18px !important;
+}
+
+/* Code Blocks */
+code:not(pre code) {
+  padding: 2px 6px !important;
+  background: #21262d !important;
+  border: 1px solid var(--pdf-border) !important;
+  border-radius: 5px !important;
+  color: #ff7b72 !important;
+  font-family: "SFMono-Regular", Consolas, monospace !important;
+  font-size: 0.88em !important;
+}
+
+pre {
+  background: var(--pdf-bg) !important;
+  border: 1px solid var(--pdf-border) !important;
+  border-radius: 8px !important;
+  padding: 16px !important;
+  overflow-x: auto !important;
+  white-space: pre-wrap !important;
+  word-break: normal !important;
+}
+
+/* Image Sequential Stack */
+.pdf-split-image-wrapper {
+  display: block !important;
+  width: 100% !important;
+  margin: 16px 0 !important;
+}
+
+.pdf-split-image-wrapper img {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  border-radius: 8px !important;
+}
+
+/* Hide controls on print */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .pdf-article {
+    width: 100% !important;
+    max-width: none !important;
+  }
+}
