@@ -27,21 +27,21 @@ export default function ChatPreview({ chatData, selectedImageIds }) {
                 {msg.role === "user" ? "YOU" : "CHATGPT"}
               </div>
 
-              {/* Message Body */}
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  // Suppress inline markdown images so they only render via selected stack below
-                  img: () => null,
-                }}
-              >
-                {msg.text}
-              </ReactMarkdown>
+              {msg.text && (
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    img: () => null,
+                  }}
+                >
+                  {msg.text}
+                </ReactMarkdown>
+              )}
 
-              {/* Stacked Selected Images One After Another */}
+              {/* Render Selected Images Inline directly within this message */}
               {visibleImages.map((img) => (
                 <div key={img.id} className="pdf-split-image-wrapper">
-                  <img src={img.url} alt="ChatGPT Attachment" />
+                  <img src={img.url} alt="ChatGPT Diagram" />
                 </div>
               ))}
             </div>

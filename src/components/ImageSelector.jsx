@@ -1,7 +1,12 @@
 import React from "react";
 import { Check, Image as ImageIcon, ImageOff } from "lucide-react";
 
-export default function ImageSelector({ images, onToggleImage, onToggleAll }) {
+export default function ImageSelector({
+  images,
+  onToggleImage,
+  onToggleAll,
+  onRemoveBrokenImage,
+}) {
   if (!images || images.length === 0) {
     return (
       <div className="no-print" style={styles.emptyContainer}>
@@ -31,7 +36,7 @@ export default function ImageSelector({ images, onToggleImage, onToggleAll }) {
       </div>
 
       <p style={styles.subtitle}>
-        Select which images to include sequentially in the PDF:
+        Select which images to include in their corresponding chat sections:
       </p>
 
       <div style={styles.grid}>
@@ -47,8 +52,9 @@ export default function ImageSelector({ images, onToggleImage, onToggleAll }) {
           >
             <img
               src={img.url}
-              alt={`Option ${index + 1}`}
+              alt={`Img #${index + 1}`}
               style={styles.thumbnail}
+              onError={() => onRemoveBrokenImage && onRemoveBrokenImage(img.id)}
             />
             <div
               style={{

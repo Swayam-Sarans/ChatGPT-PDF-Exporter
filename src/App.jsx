@@ -20,7 +20,6 @@ export default function App() {
     setError("");
 
     try {
-      // Inside handleFetchChat in App.jsx:
       const res = await fetch("http://localhost:3001/api/fetch-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -52,13 +51,26 @@ export default function App() {
     setImages((prev) => prev.map((img) => ({ ...img, selected: status })));
   };
 
+  const handleRemoveBrokenImage = (id) => {
+    setImages((prev) => prev.filter((img) => img.id !== id));
+    if (chatData) {
+      setChatData((prev) => ({
+        ...prev,
+        messages: prev.messages.map((msg) => ({
+          ...msg,
+          images: msg.images.filter((img) => img.id !== id),
+        })),
+      }));
+    }
+  };
+
   const selectedImageIds = new Set(
     images.filter((img) => img.selected).map((img) => img.id),
   );
 
   return (
     <div style={{ minHeight: "100vh", paddingBottom: 60 }}>
-      {/* Top Bar Navigation */}
+      {/* Header */}
       <header className="no-print" style={styles.topBar}>
         <div style={styles.navInner}>
           <h2 style={{ margin: 0, fontSize: 18, color: "var(--pdf-text)" }}>
@@ -75,7 +87,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* Input Section */}
+      {/* Input Form */}
       <div
         className="no-print"
         style={{
@@ -108,14 +120,15 @@ export default function App() {
         )}
       </div>
 
-      {/* Image Chooser Section */}
+      {/* Image Chooser Panel */}
       <ImageSelector
         images={images}
         onToggleImage={handleToggleImage}
         onToggleAll={handleToggleAllImages}
+        onRemoveBrokenImage={handleRemoveBrokenImage}
       />
 
-      {/* Main Continuous Chat Render */}
+      {/* Chat & PDF Output */}
       <ChatPreview chatData={chatData} selectedImageIds={selectedImageIds} />
     </div>
   );

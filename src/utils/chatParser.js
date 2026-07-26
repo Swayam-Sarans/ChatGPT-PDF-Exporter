@@ -1,76 +1,121 @@
-function sanitizeText(rawText) {
-  if (!rawText || typeof rawText !== "string") return "";
+function resolveAndCleanUrl(candidate) {
+  if (!candidate || typeof candidate !== "string") return null;
+  let url = candidate
+    .trim()
+    .replace(/^<|>$/g, "")
+    .replace(/^["']|["']$/g, "");
 
-  return (
-    rawText
-      // Remove Unicode Private Use Area tool blocks (e.g. image_group{...})
-      .replace(/[\uE000-\uF8FF][\s\S]*?([\uE000-\uF8FF]|$)/g, "")
-      .replace(/[\s\S]*?/g, "")
-      .replace(/[]/g, "")
-      // Remove markdown image tags so images only render in the selected stack below
-      .replace(/!\[.*?\]\((.*?)\)/g, "")
-      .trim()
-  );
+  // Convert file-service pointers to public CDN URLs
+  if (
+    url.startsWith("file-service://") ||
+    url.startsWith("sedo-file-service://")
+  ) {
+    const fileId = url.replace(
+      /^(file-service:\/\/|sedo-file-service:\/\/)/,
+      "",
+    );
+    return `https://files.oaiusercontent.com/${fileId}`;
+  }
+
+  if (/^file-[a-zA-Z0-9]{20,}/.test(url)) {
+    return `https://files.oaiusercontent.com/${url}`;
+  }
+
+  if (
+    url.startsWith("http://") ||
+    url.startsWith("https://") ||
+    url.startsWith("data:image/")
+  ) {
+    // Ignore search engines or share links
+    if (
+      url.includes("google.com/search") ||
+      url.includes("chatgpt.com/share") ||
+      url.includes("chat.openai.com/share")
+    ) {
+      return null;
+    }
+    return url;
+  }
+
+  return null;
 }
 
-function findImageUrlsInObject(obj, foundUrls = new Set(), depth = 0) {
-  if (!obj || depth > 8) return foundUrls;
+function extractImageUrlsFromMessage(messageObj) {
+  const urls = new Set();
 
-  if (typeof obj === "string") {
-    // 1. Direct image URLs or signed storage URLs
-    if (
-      /^https?:\/\/[^\s]+$/i.test(obj) &&
-      (/\.(png|jpe?g|webp|gif|svg)(\?|$)/i.test(obj) ||
-        obj.includes("oaiusercontent.com") ||
-        obj.includes("blob.core.windows.net") ||
-        obj.includes("dalle"))
-    ) {
-      foundUrls.add(obj);
-    }
+  function addCandidate(raw) {
+    const cleaned = resolveAndCleanUrl(raw);
+    if (cleaned) urls.add(cleaned);
+  }
 
-    // 2. Markdown image URLs ![alt](url)
-    const mdMatches = obj.matchAll(/!\[.*?\]\((https?:\/\/[^\s\)]+)\)/g);
-    for (const match of mdMatches) {
-      foundUrls.add(match[1]);
-    }
+  // Deep recursive walker to locate all image pointers in node tree
+  function walk(node, depth = 0) {
+    if (!node || depth > 10) return;
 
-    // 3. File service fallback
-    if (obj.startsWith("file-service://")) {
-      const fileId = obj.replace("file-service://", "");
-      foundUrls.add(`https://files.oaiusercontent.com/${fileId}`);
-    }
-  } else if (typeof obj === "object" && obj !== null) {
-    // Direct key inspections
-    const candidate =
-      obj.download_url ||
-      obj.url ||
-      (typeof obj.image_url === "string"
-        ? obj.image_url
-        : obj.image_url?.url) ||
-      obj.asset_pointer;
-
-    if (candidate && typeof candidate === "string") {
-      if (candidate.startsWith("http")) {
-        foundUrls.add(candidate);
-      } else if (candidate.startsWith("file-service://")) {
-        const fileId = candidate.replace("file-service://", "");
-        foundUrls.add(`https://files.oaiusercontent.com/${fileId}`);
+    if (typeof node === "string") {
+      // Extract markdown images ![alt](url)
+      const mdRegex = /!\[.*?\]\((.*?)\)/g;
+      let match;
+      while ((match = mdRegex.exec(node)) !== null) {
+        addCandidate(match[1]);
       }
-    }
+      if (
+        node.startsWith("file-service://") ||
+        node.startsWith("sedo-file-service://")
+      ) {
+        addCandidate(node);
+      }
+    } else if (typeof node === "object") {
+      if (node.asset_pointer) addCandidate(node.asset_pointer);
+      if (node.download_url) addCandidate(node.download_url);
+      if (node.file_id) addCandidate(`file-service://${node.file_id}`);
 
-    // Recursively scan object properties
-    for (const value of Object.values(obj)) {
-      findImageUrlsInObject(value, foundUrls, depth + 1);
+      if (node.image_url) {
+        if (typeof node.image_url === "string") addCandidate(node.image_url);
+        else if (node.image_url.url) addCandidate(node.image_url.url);
+      }
+
+      if (node.url && typeof node.url === "string") {
+        if (
+          node.type === "image" ||
+          node.content_type === "image_asset_pointer" ||
+          node.width ||
+          node.height ||
+          /\.(png|jpe?g|webp|gif|svg)/i.test(node.url) ||
+          node.url.includes("oaiusercontent") ||
+          node.url.includes("blob.core")
+        ) {
+          addCandidate(node.url);
+        }
+      }
+
+      for (const key of Object.keys(node)) {
+        if (key === "parent" || key === "children") continue;
+        walk(node[key], depth + 1);
+      }
     }
   }
 
-  return foundUrls;
+  walk(messageObj);
+  return Array.from(urls);
+}
+
+function sanitizeText(rawText) {
+  if (!rawText || typeof rawText !== "string") return "";
+
+  return rawText
+    .replace(/[\uE000-\uF8FF][\s\S]*?([\uE000-\uF8FF]|$)/g, "")
+    .replace(/[\s\S]*?/g, "")
+    .replace(/[]/g, "")
+    .replace(/!\[.*?\]\((.*?)\)/g, "")
+    .trim();
 }
 
 export function parseChatPayload(data) {
   const { title, conversation } = data;
   const rawMessages = [];
   const extractedImages = [];
+  const globalSeenUrls = new Set();
 
   let imgCount = 0;
 
@@ -79,7 +124,6 @@ export function parseChatPayload(data) {
       const messageObj = item.message || item;
       const role = messageObj.author?.role;
 
-      // Allow user, assistant, and tool messages (where images live)
       if (role !== "user" && role !== "assistant" && role !== "tool") return;
 
       let textContent = "";
@@ -101,15 +145,17 @@ export function parseChatPayload(data) {
         }
       });
 
-      // Extract all image URLs inside this message node
-      const urlSet = findImageUrlsInObject(messageObj);
+      const imageUrls = extractImageUrlsFromMessage(messageObj);
       const imagesInMessage = [];
 
-      urlSet.forEach((url) => {
-        imgCount++;
-        const imgObj = { id: `img_${imgCount}`, url, selected: true };
-        imagesInMessage.push(imgObj);
-        extractedImages.push(imgObj);
+      imageUrls.forEach((url) => {
+        if (!globalSeenUrls.has(url)) {
+          globalSeenUrls.add(url);
+          imgCount++;
+          const imgObj = { id: `img_${imgCount}`, url, selected: true };
+          imagesInMessage.push(imgObj);
+          extractedImages.push(imgObj);
+        }
       });
 
       const cleanText = sanitizeText(textContent);
@@ -125,20 +171,20 @@ export function parseChatPayload(data) {
     });
   }
 
-  // Group adjacent tool outputs into assistant message bubbles
-  const messages = [];
+  // Merge sequential assistant messages while maintaining exact inline image order
+  const mergedMessages = [];
   rawMessages.forEach((msg) => {
     if (
-      messages.length > 0 &&
-      messages[messages.length - 1].role === "assistant" &&
+      mergedMessages.length > 0 &&
+      mergedMessages[mergedMessages.length - 1].role === "assistant" &&
       msg.role === "assistant"
     ) {
-      const prev = messages[messages.length - 1];
+      const prev = mergedMessages[mergedMessages.length - 1];
       if (msg.text)
         prev.text = prev.text ? `${prev.text}\n\n${msg.text}` : msg.text;
       if (msg.images.length > 0) prev.images.push(...msg.images);
     } else {
-      messages.push(msg);
+      mergedMessages.push(msg);
     }
   });
 
@@ -149,7 +195,7 @@ export function parseChatPayload(data) {
       month: "long",
       year: "numeric",
     }).format(new Date()),
-    messages,
+    messages: mergedMessages,
     extractedImages,
   };
 }
