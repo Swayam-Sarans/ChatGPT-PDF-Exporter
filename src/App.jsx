@@ -20,7 +20,7 @@ export default function App() {
     setError("");
 
     try {
-      const res = await fetch("http://localhost:3001/api/fetch-chat", {
+      const res = await fetch("/api/fetch-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url }),
