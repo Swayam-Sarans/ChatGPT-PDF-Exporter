@@ -56,3 +56,24 @@ export function extractConversationData(obj, seen = new Set()) {
 
   return null;
 }
+
+export function decodeReactRouterStreamContent(stream) {
+  if (!stream || typeof stream !== "string") return null;
+
+  try {
+    // Undo JS string escaping
+    const decoded = JSON.parse(`"${stream}"`);
+
+    // Remove React Router framing if present
+    const start = decoded.indexOf("{");
+    const end = decoded.lastIndexOf("}");
+
+    if (start !== -1 && end !== -1) {
+      return decoded.slice(start, end + 1);
+    }
+
+    return decoded;
+  } catch {
+    return null;
+  }
+}
