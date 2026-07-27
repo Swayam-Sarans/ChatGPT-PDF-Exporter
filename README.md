@@ -1,16 +1,32 @@
-# React + Vite
+# ChatGPT to PDF Exporter 📄
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A full-stack web application that allows users to extract shared ChatGPT conversations and export them into beautifully formatted PDF documents. Built with React (Vite) and an Express.js serverless backend.
 
-Currently, two official plugins are available:
+(Note :- Side / Hobby project)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+**🔴 Live Demo:** [View on Vercel](https://chat-gpt-pdf-exporter.vercel.app/)
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## ✨ Features
 
-## Expanding the ESLint configuration
+* **Direct URL Extraction:** Paste any public `chatgpt.com/share/*` link to instantly fetch the conversation.
+* **Smart Fallbacks:** Uses direct JSON extraction with an automatic fallback to HTML scraping if the primary API fails.
+* **PDF Generation:** Converts the extracted chat into a clean, readable, and printable PDF document.
+* **Serverless Backend:** Configured to run flawlessly on Vercel's Serverless Functions.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 🛠️ Tech Stack
+
+* **Frontend:** React, Vite, CSS
+* **Backend:** Node.js, Express.js
+* **Deployment:** Vercel
+
+---
+
+## 🚀 Local Development
+
+To run this project locally, you will need to use the Vercel CLI to properly emulate the serverless backend environment.
+
+### 1. Install Dependencies
+```bash
+npm install
