@@ -2,7 +2,7 @@
 
 A full-stack web application that allows users to extract shared ChatGPT conversations and export them into beautifully formatted PDF documents. Built with React (Vite) and an Express.js serverless backend.
 
-(Note :- Side / Hobby project)
+> **Note:** This is a side/hobby project built to simplify saving and sharing ChatGPT conversations in a clean, printable format.
 
 **🔴 Live Demo:** [View on Vercel](https://chat-gpt-pdf-exporter.vercel.app/)
 
@@ -25,8 +25,46 @@ A full-stack web application that allows users to extract shared ChatGPT convers
 
 ## 🚀 Local Development
 
-To run this project locally, you will need to use the Vercel CLI to properly emulate the serverless backend environment.
+Since the backend uses **Vercel Serverless Functions**, use the Vercel CLI to run the project locally.
 
 ### 1. Install Dependencies
+
 ```bash
 npm install
+```
+
+### 2. Install Vercel CLI (if not already installed)
+
+```bash
+npm install -g vercel
+```
+
+or
+
+```bash
+npx vercel
+```
+
+### 3. Start the Development Server
+
+```bash
+vercel dev
+```
+
+The application will be available at:
+
+```
+http://localhost:3000
+```
+
+The `vercel dev` command starts both the React frontend and the serverless backend locally, providing an environment similar to the production deployment.
+
+---
+
+## ⚙️ How It Works
+
+1. User pastes a public ChatGPT Share URL.
+2. Backend extracts the conversation data.
+3. If direct JSON extraction fails, it automatically switches to HTML parsing.
+4. Parsed conversation is returned to the frontend.
+5. The conversation is rendered and exported as a beautifully formatted PDF.
