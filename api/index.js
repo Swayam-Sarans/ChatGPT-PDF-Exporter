@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { extractConversationData } from "./chat-extractor.js";
+import { extractConversationData } from "../backend/chat-extractor.js";
 
 const app = express();
 app.use(cors());
@@ -103,4 +103,4 @@ app.post("/api/fetch-chat", async (req, res) => {
 // app.listen(3001, () => {
 //   console.log("🚀 Backend running on http://localhost:3001");
 // });
-module.exports = app;
+export default app;
