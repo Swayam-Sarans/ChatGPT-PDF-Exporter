@@ -5,7 +5,6 @@ function resolveAndCleanUrl(candidate) {
     .replace(/^<|>$/g, "")
     .replace(/^["']|["']$/g, "");
 
-  // Convert file-service pointers to public CDN URLs
   if (
     url.startsWith("file-service://") ||
     url.startsWith("sedo-file-service://")
@@ -26,7 +25,6 @@ function resolveAndCleanUrl(candidate) {
     url.startsWith("https://") ||
     url.startsWith("data:image/")
   ) {
-    // Ignore search engines or share links
     if (
       url.includes("google.com/search") ||
       url.includes("chatgpt.com/share") ||
@@ -36,24 +34,20 @@ function resolveAndCleanUrl(candidate) {
     }
     return url;
   }
-
   return null;
 }
 
 function extractImageUrlsFromMessage(messageObj) {
   const urls = new Set();
-
   function addCandidate(raw) {
     const cleaned = resolveAndCleanUrl(raw);
     if (cleaned) urls.add(cleaned);
   }
 
-  // Deep recursive walker to locate all image pointers in node tree
   function walk(node, depth = 0) {
     if (!node || depth > 10) return;
 
     if (typeof node === "string") {
-      // Extract markdown images ![alt](url)
       const mdRegex = /!\[.*?\]\((.*?)\)/g;
       let match;
       while ((match = mdRegex.exec(node)) !== null) {
@@ -69,12 +63,10 @@ function extractImageUrlsFromMessage(messageObj) {
       if (node.asset_pointer) addCandidate(node.asset_pointer);
       if (node.download_url) addCandidate(node.download_url);
       if (node.file_id) addCandidate(`file-service://${node.file_id}`);
-
       if (node.image_url) {
         if (typeof node.image_url === "string") addCandidate(node.image_url);
         else if (node.image_url.url) addCandidate(node.image_url.url);
       }
-
       if (node.url && typeof node.url === "string") {
         if (
           node.type === "image" ||
@@ -88,14 +80,12 @@ function extractImageUrlsFromMessage(messageObj) {
           addCandidate(node.url);
         }
       }
-
       for (const key of Object.keys(node)) {
         if (key === "parent" || key === "children") continue;
         walk(node[key], depth + 1);
       }
     }
   }
-
   walk(messageObj);
   return Array.from(urls);
 }
@@ -103,12 +93,28 @@ function extractImageUrlsFromMessage(messageObj) {
 function sanitizeText(rawText) {
   if (!rawText || typeof rawText !== "string") return "";
 
-  return rawText
-    .replace(/[\uE000-\uF8FF][\s\S]*?([\uE000-\uF8FF]|$)/g, "")
-    .replace(/[\s\S]*?/g, "")
-    .replace(/[]/g, "")
-    .replace(/!\[.*?\]\((.*?)\)/g, "")
-    .trim();
+  // Preserve the image_group placeholders.
+  // They will be replaced later by restoreImageGroups().
+  return rawText.trim();
+}
+
+function restoreImageGroups(text, messageObj) {
+  if (!text) return text;
+
+  const refs = messageObj?.metadata?.content_references || [];
+
+  refs.forEach((ref) => {
+    if (
+      ref &&
+      ref.type === "image_group" &&
+      typeof ref.matched_text === "string" &&
+      typeof ref.alt === "string"
+    ) {
+      text = text.replace(ref.matched_text, "\n\n" + ref.alt + "\n\n");
+    }
+  });
+
+  return text;
 }
 
 export function parseChatPayload(data) {
@@ -116,12 +122,14 @@ export function parseChatPayload(data) {
   const rawMessages = [];
   const extractedImages = [];
   const globalSeenUrls = new Set();
+  const urlToIdMap = {}; // Maps URL back to the image ID for ReactMarkdown
 
   let imgCount = 0;
 
   if (Array.isArray(conversation)) {
     conversation.forEach((item) => {
       const messageObj = item.message || item;
+
       const role = messageObj.author?.role;
 
       if (role !== "user" && role !== "assistant" && role !== "tool") return;
@@ -155,23 +163,45 @@ export function parseChatPayload(data) {
           const imgObj = { id: `img_${imgCount}`, url, selected: true };
           imagesInMessage.push(imgObj);
           extractedImages.push(imgObj);
+          urlToIdMap[url] = imgObj.id;
+        } else {
+          // If already globally seen, ensure it's tracked in this specific message node
+          const existingId = urlToIdMap[url];
+          if (existingId && !imagesInMessage.find((i) => i.id === existingId)) {
+            imagesInMessage.push({ id: existingId, url, selected: true });
+          }
         }
       });
 
-      const cleanText = sanitizeText(textContent);
+      let cleanText = sanitizeText(textContent);
+
+      // Restore ChatGPT image groups
+      cleanText = restoreImageGroups(cleanText, messageObj);
+
+      // Normalize every markdown image URL
+      cleanText = cleanText.replace(
+        /!\[(.*?)\]\((.*?)\)/g,
+        (_, alt, rawUrl) => {
+          const cleanUrl = resolveAndCleanUrl(rawUrl);
+
+          if (!cleanUrl) return "";
+
+          return `![${alt || "Image"}](${cleanUrl})`;
+        },
+      );
 
       if (cleanText || imagesInMessage.length > 0) {
         rawMessages.push({
           id: messageObj.id || Math.random().toString(),
           role: role === "tool" ? "assistant" : role,
           text: cleanText,
-          images: imagesInMessage,
+          images: imagesInMessage, // Keeps App.jsx perfectly stable
         });
       }
     });
   }
 
-  // Merge sequential assistant messages while maintaining exact inline image order
+  // Merge sequential assistant messages
   const mergedMessages = [];
   rawMessages.forEach((msg) => {
     if (
@@ -182,7 +212,14 @@ export function parseChatPayload(data) {
       const prev = mergedMessages[mergedMessages.length - 1];
       if (msg.text)
         prev.text = prev.text ? `${prev.text}\n\n${msg.text}` : msg.text;
-      if (msg.images.length > 0) prev.images.push(...msg.images);
+
+      const existingIds = new Set(prev.images.map((img) => img.id));
+      msg.images.forEach((img) => {
+        if (!existingIds.has(img.id)) {
+          prev.images.push(img);
+          existingIds.add(img.id);
+        }
+      });
     } else {
       mergedMessages.push(msg);
     }
@@ -197,5 +234,6 @@ export function parseChatPayload(data) {
     }).format(new Date()),
     messages: mergedMessages,
     extractedImages,
+    urlToIdMap, // Export mapping for ChatPreview to use
   };
 }
